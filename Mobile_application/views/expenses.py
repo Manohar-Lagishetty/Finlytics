@@ -7,7 +7,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .api_serializers import (
+from expenses.models import (
+    Budget,
+    Category,
+    ColumnPreference,
+    Expense,
+    FinanceSettings,
+    Income,
+    RecurringIncome,
+    SyncTombstone,
+)
+from expenses.services import sync_recurring_incomes
+
+from ..serializers.expenses import (
     BudgetSerializer,
     CategorySerializer,
     ColumnPreferenceSerializer,
@@ -16,8 +28,6 @@ from .api_serializers import (
     IncomeSerializer,
     RecurringIncomeSerializer,
 )
-from .models import Budget, Category, ColumnPreference, Expense, FinanceSettings, Income, RecurringIncome, SyncTombstone
-from .services import sync_recurring_incomes
 
 
 class UserScopedModelViewSet(viewsets.ModelViewSet):

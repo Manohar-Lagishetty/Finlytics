@@ -17,9 +17,9 @@ urlpatterns = [
     path('expenses/', include('expenses.urls')),
 
     # JSON API for the Flutter mobile app (JWT-auth, local-first sync).
-    path('api/v1/auth/', include('accounts.api_urls')),
-    path('api/v1/dashboard/', include('dashboard.api_urls')),
-    path('api/v1/', include('expenses.api_urls')),
+    # All of its logic/routing lives in Mobile_application/, separate from
+    # the web app's views above - both read/write the same models.
+    path('api/v1/', include('Mobile_application.urls')),
 
     path('', include('core.urls')),
 ]

@@ -9,7 +9,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .api_serializers import (
+from accounts.models import OTP, User
+from accounts.utils import send_otp_email
+
+from ..serializers.accounts import (
     GoogleAuthSerializer,
     LoginSerializer,
     ResendOTPSerializer,
@@ -17,8 +20,6 @@ from .api_serializers import (
     UserSerializer,
     VerifyOTPSerializer,
 )
-from .models import OTP, User
-from .utils import send_otp_email
 
 
 def _tokens_for(user):

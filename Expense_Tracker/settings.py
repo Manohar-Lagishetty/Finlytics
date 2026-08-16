@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'core',
     'dashboard',
     'expenses',
+    'Mobile_application',
 ]
 
 MIDDLEWARE = [

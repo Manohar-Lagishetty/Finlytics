@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import (
+from expenses.models import (
     EXPENSE_COLUMNS,
     Budget,
     Category,

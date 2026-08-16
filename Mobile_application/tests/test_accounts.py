@@ -7,7 +7,7 @@ from google.auth.exceptions import GoogleAuthError
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import OTP, User
+from accounts.models import OTP, User
 
 VALID_PASSWORD = "S3curePass!23"
 
@@ -165,7 +165,7 @@ class GoogleLoginTests(APITestCase):
             "picture": "https://example.com/ada.jpg",
         }
 
-    @patch("accounts.api_views.google_id_token.verify_oauth2_token")
+    @patch("Mobile_application.views.accounts.google_id_token.verify_oauth2_token")
     def test_creates_and_activates_a_new_user(self, verify_oauth2_token):
         verify_oauth2_token.return_value = self.claims
 
@@ -179,7 +179,7 @@ class GoogleLoginTests(APITestCase):
         self.assertEqual(user.signup_method, "google")
         self.assertFalse(user.has_usable_password())
 
-    @patch("accounts.api_views.google_id_token.verify_oauth2_token")
+    @patch("Mobile_application.views.accounts.google_id_token.verify_oauth2_token")
     def test_activates_a_user_stuck_in_unverified_email_signup(self, verify_oauth2_token):
         verify_oauth2_token.return_value = self.claims
         User.objects.create_user(email="ada@example.com", password=VALID_PASSWORD, is_active=False)
@@ -190,7 +190,7 @@ class GoogleLoginTests(APITestCase):
         user = User.objects.get(email="ada@example.com")
         self.assertTrue(user.is_active)
 
-    @patch("accounts.api_views.google_id_token.verify_oauth2_token")
+    @patch("Mobile_application.views.accounts.google_id_token.verify_oauth2_token")
     def test_logs_in_an_existing_active_user(self, verify_oauth2_token):
         verify_oauth2_token.return_value = self.claims
         existing = User.objects.create_user(email="ada@example.com", password=VALID_PASSWORD, is_active=True)
@@ -201,7 +201,7 @@ class GoogleLoginTests(APITestCase):
         self.assertEqual(User.objects.count(), 1)
         self.assertEqual(response.data["user"]["email"], existing.email)
 
-    @patch("accounts.api_views.google_id_token.verify_oauth2_token")
+    @patch("Mobile_application.views.accounts.google_id_token.verify_oauth2_token")
     def test_rejects_an_unverified_google_email(self, verify_oauth2_token):
         verify_oauth2_token.return_value = {**self.claims, "email_verified": False}
 
@@ -210,7 +210,7 @@ class GoogleLoginTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(User.objects.exists())
 
-    @patch("accounts.api_views.google_id_token.verify_oauth2_token")
+    @patch("Mobile_application.views.accounts.google_id_token.verify_oauth2_token")
     def test_rejects_an_invalid_token(self, verify_oauth2_token):
         verify_oauth2_token.side_effect = GoogleAuthError("bad token")
 
