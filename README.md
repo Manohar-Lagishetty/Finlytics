@@ -21,6 +21,18 @@ python manage.py runserver
 
 Visit http://127.0.0.1:8000/
 
+## Project layout
+
+- `accounts/`, `core/`, `dashboard/`, `expenses/` — the web app: models,
+  server-rendered views/templates, and (for `expenses`) the tombstone
+  signal that also backs the mobile sync feed.
+- `Mobile_application/` — all logic/routing for the Flutter app's JSON API
+  (`/api/v1/...`): serializers, views, urls, the `purge_tombstones`
+  command, and their tests. Kept separate from the web app's views, but it
+  imports and operates on the *same* models/database as the apps above —
+  one shared `User` table means an account created via either surface can
+  log into both.
+
 ## What's built
 
 **Web app**
