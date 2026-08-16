@@ -1,0 +1,232 @@
+{% extends "base_app.html" %}
+{% load static %}
+{% block title %}Expenses — Finlytics{% endblock %}
+
+{% block dashboard_content %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-extrabold tracking-tight">Expenses</h1>
+    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Browse, filter and manage everything you've logged.</p>
+  </div>
+  <a href="{% url 'expenses:add' %}"
+     class="btn-press btn-gradient ripple-container flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-glow-brand">
+    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+    Add Expense
+  </a>
+</div>
+
+<!-- Filters -->
+<form method="get" class="spotlight-card mb-6 rounded-3xl border border-slate-200 bg-white/60 p-4 dark:border-slate-800 dark:bg-slate-900/40 sm:p-5">
+  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div class="col-span-1">
+      <label class="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400" for="{{ filter_form.date_from.id_for_label }}">From</label>
+      {{ filter_form.date_from }}
+    </div>
+    <div class="col-span-1">
+      <label class="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400" for="{{ filter_form.date_to.id_for_label }}">To</label>
+      {{ filter_form.date_to }}
+    </div>
+    <div class="col-span-2 sm:col-span-1">
+      <label class="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400" for="{{ filter_form.category.id_for_label }}">Category</label>
+      {{ filter_form.category }}
+    </div>
+    <div class="col-span-1">
+      <label class="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400" for="{{ filter_form.amount_min.id_for_label }}">Min amount</label>
+      {{ filter_form.amount_min }}
+    </div>
+    <div class="col-span-1">
+      <label class="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400" for="{{ filter_form.amount_max.id_for_label }}">Max amount</label>
+      {{ filter_form.amount_max }}
+    </div>
+    <div class="col-span-2 sm:col-span-3 lg:col-span-1">
+      <label class="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400" for="{{ filter_form.q.id_for_label }}">Search notes</label>
+      {{ filter_form.q }}
+    </div>
+  </div>
+
+  {% for field in filter_form %}
+    {% for error in field.errors %}<p class="mt-2 text-xs text-rose-500">{{ field.label }}: {{ error }}</p>{% endfor %}
+  {% endfor %}
+
+  <div class="mt-4 flex items-center gap-3">
+    <button type="submit" class="btn-press btn-gradient ripple-container rounded-xl px-4 py-2 text-sm font-semibold text-white">
+      Apply filters
+    </button>
+    {% if has_filters %}
+      <a href="{% url 'expenses:list' %}" class="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">Clear filters</a>
+    {% endif %}
+  </div>
+</form>
+
+<!-- Results -->
+{{ hidden_columns|json_script:"hidden-columns-data" }}
+<div x-data="expenseList({
+       hiddenInitial: JSON.parse(document.getElementById('hidden-columns-data').textContent),
+       updateColumnsUrl: '{% url 'expenses:update_columns' %}',
+       csrfToken: '{{ csrf_token }}',
+     })"
+     class="spotlight-card rounded-3xl border border-slate-200 bg-white/60 dark:border-slate-800 dark:bg-slate-900/40">
+
+  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5 dark:border-slate-800">
+    <p class="text-sm text-slate-500 dark:text-slate-400">
+      {% if total_count %}
+        <span class="font-semibold text-slate-700 dark:text-slate-200" data-count-up data-count-decimals="0">{{ total_count }}</span> expense{{ total_count|pluralize }},
+        totaling <span class="font-semibold text-slate-700 dark:text-slate-200" data-count-up>{{ total_amount|floatformat:2 }}</span>
+      {% else %}
+        No expenses match these filters.
+      {% endif %}
+    </p>
+
+    <div class="flex items-center gap-2">
+      {% include "expenses/_export_menu.html" with csv_url="expenses:export_csv" xlsx_url="expenses:export_xlsx" pdf_url="expenses:export_pdf" %}
+
+      <div class="relative">
+        <button type="button" @click="columnsOpen = !columnsOpen"
+                class="btn-press flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-brand-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-brand-700">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 4.5v15m6-15v15M4.5 9h15M4.5 15h15"/></svg>
+          Columns
+          <svg class="h-3.5 w-3.5 text-slate-400 transition-transform" :class="columnsOpen && 'rotate-180'" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+        </button>
+        <div x-show="columnsOpen" @click.outside="columnsOpen = false" x-cloak
+             x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+             class="glass-panel absolute right-0 z-30 mt-2 w-48 origin-top-right rounded-xl p-2 shadow-xl"
+          {% for col in columns %}
+            <label class="flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
+              <input type="checkbox" :checked="!isHidden('{{ col }}')" @change="toggleColumn('{{ col }}')"
+                     class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800">
+              {{ col|capfirst }}
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if page_obj.object_list %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-800 dark:text-slate-500">
+            <th x-show="!isHidden('date')" class="px-5 py-3">
+              <a href="{% querystring sort=date_sort page=1 %}" class="inline-flex items-center gap-1 hover:text-slate-600 dark:hover:text-slate-300">
+                Date
+                {% if current_sort == 'date' %}<span>↑</span>{% elif current_sort == '-date' %}<span>↓</span>{% endif %}
+              </a>
+            </th>
+            <th x-show="!isHidden('category')" class="px-5 py-3">Category</th>
+            <th x-show="!isHidden('amount')" class="px-5 py-3">
+              <a href="{% querystring sort=amount_sort page=1 %}" class="inline-flex items-center gap-1 hover:text-slate-600 dark:hover:text-slate-300">
+                Amount
+                {% if current_sort == 'amount' %}<span>↑</span>{% elif current_sort == '-amount' %}<span>↓</span>{% endif %}
+              </a>
+            </th>
+            <th x-show="!isHidden('payment')" class="px-5 py-3">Payment</th>
+            <th x-show="!isHidden('location')" class="px-5 py-3">Location</th>
+            <th x-show="!isHidden('note')" class="px-5 py-3">Note</th>
+            <th class="px-5 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for expense in page_obj %}
+            <tr class="stagger-item-fast group/row border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50 dark:border-slate-800/60 dark:hover:bg-slate-800/30" style="--i: {{ forloop.counter0 }}">
+              <td x-show="!isHidden('date')" class="px-5 py-3 text-slate-600 dark:text-slate-300">{{ expense.date|date:"M j, Y, g:i A" }}</td>
+              <td x-show="!isHidden('category')" class="px-5 py-3">
+                <span class="inline-flex items-center rounded-full bg-gradient-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-700 dark:text-brand-300">{{ expense.category.name }}</span>
+              </td>
+              <td x-show="!isHidden('amount')" class="px-5 py-3 font-semibold text-slate-800 dark:text-slate-100">{{ expense.amount }}</td>
+              <td x-show="!isHidden('payment')" class="px-5 py-3 text-slate-500 dark:text-slate-400">
+                {{ expense.get_payment_type_display }}{% if expense.payment_source %} · {{ expense.payment_source }}{% endif %}
+              </td>
+              <td x-show="!isHidden('location')" class="max-w-[10rem] truncate px-5 py-3 text-slate-500 dark:text-slate-400">{{ expense.location|default:"—" }}</td>
+              <td x-show="!isHidden('note')" class="max-w-xs truncate px-5 py-3 text-slate-500 dark:text-slate-400">{{ expense.note|default:"—" }}</td>
+              <td class="px-5 py-3">
+                <div class="flex items-center justify-end gap-1 opacity-0 transition group-hover/row:opacity-100">
+                  <a href="{% url 'expenses:edit' expense.pk %}" title="Edit"
+                     class="btn-press grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-500/10 dark:hover:text-brand-400">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"/></svg>
+                  </a>
+                  <form id="delete-expense-form-{{ expense.pk }}" method="post" action="{% url 'expenses:delete' expense.pk %}" class="contents">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="button"
+                            @click="confirmDelete({{ expense.pk }}, '{{ expense.amount }} in {{ expense.category.name|escapejs }}')"
+                            title="Delete"
+                            class="btn-press grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400">
+                      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+      <div class="flex items-center justify-between border-t border-slate-200 px-5 py-3.5 dark:border-slate-800">
+        <p class="text-xs text-slate-400 dark:text-slate-600">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</p>
+        <div class="flex gap-2">
+          {% if page_obj.has_previous %}
+            <a href="{% querystring page=page_obj.previous_page_number %}" class="btn-press rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60">Previous</a>
+          {% endif %}
+          {% if page_obj.has_next %}
+            <a href="{% querystring page=page_obj.next_page_number %}" class="btn-press rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60">Next</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="flex flex-col items-center justify-center px-6 py-16 text-center">
+      <div class="animate-float-y-slow animate-pop-in mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-500 dark:bg-brand-500/10 dark:text-brand-400">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 10.5h19.5M2.25 10.5V6.75A2.25 2.25 0 0 1 4.5 4.5h15a2.25 2.25 0 0 1 2.25 2.25v3.75M2.25 10.5v6.75A2.25 2.25 0 0 0 4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V10.5M6 15h3"/></svg>
+      </div>
+      {% if has_filters %}
+        <p class="text-sm font-medium text-slate-600 dark:text-slate-300">No expenses match these filters</p>
+        <a href="{% url 'expenses:list' %}" class="mt-1.5 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Clear filters</a>
+      {% else %}
+        <p class="text-sm font-medium text-slate-600 dark:text-slate-300">No expenses yet</p>
+        <a href="{% url 'expenses:add' %}" class="mt-1.5 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400">Add your first one →</a>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- Delete confirmation modal -->
+  <div x-show="confirmId !== null" x-cloak
+       class="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4 backdrop-blur-sm"
+       x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+       @keydown.escape.window="confirmId = null">
+    <div @click.outside="confirmId = null"
+         x-show="confirmId !== null"
+         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+         class="glass-panel w-full max-w-sm rounded-3xl p-6 shadow-2xl">
+      <div class="animate-pop-in mb-4 grid h-11 w-11 place-items-center rounded-full bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+      </div>
+      <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100">Delete expense?</h3>
+      <p class="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+        This will permanently delete the <span x-text="confirmLabel" class="font-medium text-slate-700 dark:text-slate-300"></span> expense.
+      </p>
+      <div class="mt-5 flex gap-3">
+        <button type="button" @click="confirmId = null"
+                class="btn-press flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60">
+          Cancel
+        </button>
+        <button type="button"
+                @click="document.getElementById('delete-expense-form-' + confirmId).submit(); confirmId = null"
+                class="btn-press ripple-container flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script src="{% static 'js/expense_list.js' %}"></script>
+{% endblock %}

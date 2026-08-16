@@ -1,0 +1,57 @@
+{% extends "base_auth.html" %}
+{% load static %}
+{% block title %}Verify your email — Finlytics{% endblock %}
+
+{% block auth_content %}
+<div class="mx-auto h-14 w-14 rounded-2xl bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 grid place-items-center mb-5">
+  <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="m3 8 7.89 5.26a2.25 2.25 0 0 0 2.22 0L21 8M5.25 19.5h13.5A2.25 2.25 0 0 0 21 17.25V6.75A2.25 2.25 0 0 0 18.75 4.5H5.25A2.25 2.25 0 0 0 3 6.75v10.5A2.25 2.25 0 0 0 5.25 19.5Z"/></svg>
+</div>
+<h1 class="text-2xl font-extrabold tracking-tight text-center">Check your email</h1>
+<p class="mt-1.5 text-sm text-slate-500 dark:text-slate-400 text-center">
+  We sent a 6-digit code to <span class="font-semibold text-slate-700 dark:text-slate-300">{{ email }}</span>
+</p>
+
+{% if form.non_field_errors or form.code.errors %}
+  <div class="mt-5 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 px-4 py-3 text-sm text-rose-700 dark:text-rose-400 text-center">
+    {{ form.code.errors.0|default:form.non_field_errors.0 }}
+  </div>
+{% endif %}
+
+<form id="otp-form" method="post" class="mt-7">
+  {% csrf_token %}
+  <input type="hidden" name="code" id="otp-hidden">
+  <div class="flex items-center justify-center gap-2 sm:gap-3">
+    <input class="otp-box" maxlength="1" inputmode="numeric" autocomplete="one-time-code">
+    <input class="otp-box" maxlength="1" inputmode="numeric">
+    <input class="otp-box" maxlength="1" inputmode="numeric">
+    <input class="otp-box" maxlength="1" inputmode="numeric">
+    <input class="otp-box" maxlength="1" inputmode="numeric">
+    <input class="otp-box" maxlength="1" inputmode="numeric">
+  </div>
+
+  <p class="mt-5 text-center text-xs text-slate-400 dark:text-slate-600">
+    Code expires in <span id="otp-expiry" class="font-semibold text-slate-600 dark:text-slate-300">10:00</span>
+  </p>
+
+  <button type="submit" class="mt-6 w-full rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 text-sm shadow-lg shadow-brand-500/25 transition">
+    Verify &amp; continue
+  </button>
+</form>
+
+<form method="post" action="{% url 'accounts:resend_otp' %}" class="mt-5 text-center">
+  {% csrf_token %}
+  <button id="resend-otp-btn" type="submit" class="text-sm font-semibold text-brand-600 dark:text-brand-400 hover:underline disabled:no-underline">
+    Resend code <span id="resend-countdown" class="text-slate-400 dark:text-slate-600 font-normal"></span>
+  </button>
+</form>
+
+<p class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+  Wrong email?
+  <a href="{% url 'accounts:signup' %}" class="font-semibold text-brand-600 dark:text-brand-400 hover:underline">Start over</a>
+</p>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script src="{% static 'js/otp.js' %}"></script>
+{% endblock %}

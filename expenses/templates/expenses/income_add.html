@@ -1,0 +1,59 @@
+{% extends "base_app.html" %}
+{% block title %}Add Credit — Finlytics{% endblock %}
+
+{% block dashboard_content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-extrabold tracking-tight">Add Credit</h1>
+  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Log an extra or ad-hoc income on top of your monthly income.</p>
+</div>
+
+<div class="spotlight-card max-w-xl rounded-3xl border border-slate-200 bg-white/60 p-6 dark:border-slate-800 dark:bg-slate-900/40">
+  {% if form.non_field_errors %}
+    <div class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400">
+      {{ form.non_field_errors.0 }}
+    </div>
+  {% endif %}
+
+  <form method="post" class="space-y-5" x-data="{ submitting: false }" @submit="submitting = true">
+    {% csrf_token %}
+
+    <div>
+      <label class="mb-1.5 block text-sm font-medium" for="{{ form.amount.id_for_label }}">Amount</label>
+      {{ form.amount }}
+      {% for error in form.amount.errors %}<p class="mt-1.5 text-xs text-rose-500">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div>
+      <label class="mb-1.5 block text-sm font-medium" for="{{ form.date.id_for_label }}">Date &amp; time</label>
+      {{ form.date }}
+      {% for error in form.date.errors %}<p class="mt-1.5 text-xs text-rose-500">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div>
+      <label class="mb-1.5 block text-sm font-medium" for="{{ form.source.id_for_label }}">Source <span class="text-slate-400">(optional)</span></label>
+      {{ form.source }}
+      {% for error in form.source.errors %}<p class="mt-1.5 text-xs text-rose-500">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div>
+      <label class="mb-1.5 block text-sm font-medium" for="{{ form.note.id_for_label }}">Note <span class="text-slate-400">(optional)</span></label>
+      {{ form.note }}
+      {% for error in form.note.errors %}<p class="mt-1.5 text-xs text-rose-500">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div class="flex gap-3">
+      <a href="{% url 'expenses:income' %}" class="btn-press flex-1 rounded-xl border border-slate-200 py-3 text-center text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800/60">
+        Cancel
+      </a>
+      <button type="submit" :disabled="submitting"
+              class="btn-press btn-gradient ripple-container flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white shadow-glow-brand disabled:cursor-not-allowed disabled:opacity-80">
+        <svg x-show="submitting" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z"></path>
+        </svg>
+        <span x-text="submitting ? 'Adding…' : 'Add Credit'"></span>
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

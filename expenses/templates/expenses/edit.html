@@ -1,0 +1,17 @@
+{% extends "base_app.html" %}
+{% load static %}
+{% block title %}{{ page_title }} — Finlytics{% endblock %}
+
+{% block dashboard_content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-extrabold tracking-tight">{{ page_title }}</h1>
+  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ page_subtitle }}</p>
+</div>
+
+{% include "expenses/_expense_form.html" %}
+{% endblock %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script src="{% static 'js/category_picker.js' %}"></script>
+{% endblock %}

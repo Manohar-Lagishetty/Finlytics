@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="relative min-h-screen overflow-hidden flex flex-col">
+  <div class="mesh-backdrop">
+    <div class="mesh-blob w-[26rem] h-[26rem] bg-brand-400/50 dark:bg-brand-600/30 -top-40 -left-20 animate-float-y-slow"></div>
+    <div class="mesh-blob w-80 h-80 bg-fuchsia-300/40 dark:bg-fuchsia-700/25 bottom-0 -right-16 animate-float-y"></div>
+  </div>
+
+  <header class="relative z-10 max-w-7xl mx-auto w-full px-6 lg:px-8 py-6 flex items-center justify-between">
+    <a href="{% url 'core:landing' %}" class="flex items-center gap-2.5">
+      <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-white font-bold shadow-lg shadow-brand-500/30">F</span>
+      <span class="text-lg font-extrabold tracking-tight">Finlytics</span>
+    </a>
+    <button onclick="toggleTheme()" class="h-10 w-10 grid place-items-center rounded-full border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:border-brand-300 dark:hover:border-brand-700 transition">
+      <svg data-theme-icon="light" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1.5m0 15V21m8.25-9H21M3 12h1.5m13.03-6.53-1.06 1.06M6.53 17.47l-1.06 1.06m0-13.06 1.06 1.06M17.47 17.47l1.06 1.06M16.5 12a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/></svg>
+      <svg data-theme-icon="dark" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 15.5A9.75 9.75 0 1 1 8.5 2.25a7.5 7.5 0 0 0 13.25 13.25Z"/></svg>
+    </button>
+  </header>
+
+  <main class="relative z-10 flex-1 grid place-items-center px-6 py-10">
+    <div class="tilt-card w-full max-w-md glass-surface border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl shadow-slate-900/5 p-8 sm:p-10" data-tilt-strength="3">
+      {% block auth_content %}{% endblock %}
+    </div>
+  </main>
+
+  <footer class="relative z-10 text-center text-xs text-slate-400 dark:text-slate-600 pb-8">
+    © {% now "Y" %} Finlytics
+  </footer>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/tilt.js' %}"></script>
+{% endblock %}

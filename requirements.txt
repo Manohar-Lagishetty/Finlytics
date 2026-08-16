@@ -1,0 +1,10 @@
+Django==6.1
+django-allauth==65.19.0
+django-environ==0.14.0
+psycopg2-binary==2.9.12
+requests==2.34.2
+openpyxl==3.1.5
+reportlab==5.0.0
+djangorestframework==3.18.0
+djangorestframework-simplejwt==5.5.1
+google-auth==2.56.3

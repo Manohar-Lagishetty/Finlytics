@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pg_isready -h localhost -p 5432)",
+      "Bash(psql -h localhost -U exp_pro -d exp_pro -c \"select 1;\")",
+      "Bash(pip -V)",
+      "Bash(env)",
+      "Read(//home/manohar/PROJECTS/Expense_Tracker/**)",
+      "Bash(pip list *)",
+      "Bash(pip install *)",
+      "Bash(python manage.py startapp accounts)",
+      "Bash(python manage.py startapp dashboard)",
+      "Bash(python manage.py startapp core)",
+      "Bash(pip freeze *)",
+      "Bash(python manage.py check)",
+      "Bash(python manage.py makemigrations accounts)",
+      "Bash(python manage.py migrate)",
+      "Bash(PGPASSWORD=exp_pro_admin psql *)",
+      "Bash(DJANGO_SUPERUSER_PASSWORD=admin12345 python *)",
+      "Bash(python manage.py collectstatic --noinput)",
+      "Bash(pkill -f \"manage.py runserver\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" --max-time 2 http://127.0.0.1:8000/)",
+      "Bash(pkill -f \"manage.py runserver 127.0.0.1:8000\")",
+      "Bash(python manage.py startapp expenses)",
+      "Bash(python *)",
+      "Bash(pg_isready)",
+      "Bash(disown)",
+      "Bash(timeout 20 bash -c 'until curl -sf http://127.0.0.1:8000/accounts/login/ >/dev/null; do sleep 1; done')",
+      "Bash(curl -s -b /tmp/cookies2.txt -o /tmp/addpage.html -w \"add_page:%{http_code}\\\\n\" http://127.0.0.1:8000/expenses/add/)",
+      "Read(//tmp/**)",
+      "Bash(deactivate)",
+      "Bash(/usr/bin/python3 /tmp/claude-1000/-home-manohar-PROJECTS-Expense-Tracker-Expense-Tracker/fc08164c-a35d-4f66-abdb-59d5c80bcedd/scratchpad/gen_icons.py)",
+      "Bash(pkill -f \"runserver 127.0.0.1:8123\")"
+    ]
+  }
+}

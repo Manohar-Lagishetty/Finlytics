@@ -1,0 +1,41 @@
+{% extends "base_app.html" %}
+{% block title %}Settings — Finlytics{% endblock %}
+
+{% block dashboard_content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-extrabold tracking-tight">Settings</h1>
+  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Your monthly income and low-balance warning threshold.</p>
+</div>
+
+<div class="card-hover spotlight-card max-w-xl rounded-3xl border border-slate-200 bg-white/60 p-6 dark:border-slate-800 dark:bg-slate-900/40">
+  {% if form.non_field_errors %}
+    <div class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400">
+      {{ form.non_field_errors.0 }}
+    </div>
+  {% endif %}
+
+  <form method="post" class="space-y-5">
+    {% csrf_token %}
+
+    <div>
+      <label class="mb-1.5 block text-sm font-medium" for="{{ form.monthly_income.id_for_label }}">Monthly income</label>
+      {{ form.monthly_income }}
+      <p class="mt-1.5 text-xs text-slate-400 dark:text-slate-600">Your expected recurring income each calendar month.</p>
+      {% for error in form.monthly_income.errors %}<p class="mt-1.5 text-xs text-rose-500">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div>
+      <label class="mb-1.5 block text-sm font-medium" for="{{ form.low_balance_threshold.id_for_label }}">Low balance threshold</label>
+      {{ form.low_balance_threshold }}
+      <p class="mt-1.5 text-xs text-slate-400 dark:text-slate-600">
+        You'll see a warning on the dashboard when this month's balance (income + credits − expenses) drops below this.
+      </p>
+      {% for error in form.low_balance_threshold.errors %}<p class="mt-1.5 text-xs text-rose-500">{{ error }}</p>{% endfor %}
+    </div>
+
+    <button type="submit" class="btn-press btn-gradient ripple-container w-full rounded-xl py-3 text-sm font-semibold text-white shadow-glow-brand">
+      Save settings
+    </button>
+  </form>
+</div>
+{% endblock %}

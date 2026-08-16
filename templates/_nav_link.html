@@ -1,0 +1,16 @@
+{% comment %}
+Sidebar nav link. Context: url, key (matched against active_nav), label,
+icon (path d=), icon2 (optional second path d= for icons needing two).
+{% endcomment %}
+<a href="{{ url }}"
+   class="btn-press spotlight-card group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+   {% if active_nav == key %}bg-gradient-brand-soft text-brand-700 dark:text-brand-300{% else %}text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5{% endif %}">
+  {% if active_nav == key %}
+    <span class="absolute inset-y-1 left-0 w-1 rounded-full bg-gradient-brand shadow-[0_0_8px_1px_rgba(139,92,246,0.6)]"></span>
+  {% endif %}
+  <svg class="relative h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+    <path stroke-linecap="round" stroke-linejoin="round" d="{{ icon }}"/>
+    {% if icon2 %}<path stroke-linecap="round" stroke-linejoin="round" d="{{ icon2 }}"/>{% endif %}
+  </svg>
+  <span class="nav-label relative whitespace-nowrap">{{ label }}</span>
+</a>
