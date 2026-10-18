@@ -2,7 +2,10 @@
 // install prompt. Keeps it deliberately light: only caches static assets
 // (css/js/icons/fonts), never HTML. Pages are server-rendered with CSRF
 // tokens and session state, so caching them would serve stale forms/auth.
-const CACHE = "finlytics-static-v1";
+// Static assets are network-first (cache is only an offline fallback):
+// filenames aren't content-hashed, so cache-first would keep serving old
+// JS/CSS after a deploy. Bump CACHE to purge old caches on activate.
+const CACHE = "finlytics-static-v2";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -27,11 +30,15 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
-      const cached = await cache.match(request);
-      if (cached) return cached;
-      const response = await fetch(request);
-      if (response.ok) cache.put(request, response.clone());
-      return response;
+      try {
+        const response = await fetch(request);
+        if (response.ok) cache.put(request, response.clone());
+        return response;
+      } catch (err) {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        throw err;
+      }
     })
   );
 });
