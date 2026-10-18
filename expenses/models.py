@@ -1,4 +1,3 @@
-import uuid as uuid_lib
 from decimal import Decimal
 
 from django.conf import settings
@@ -8,24 +7,7 @@ from django.db import models
 from django.utils import timezone
 
 
-class SyncableModel(models.Model):
-    """Common fields for models the Flutter app syncs to local SQLite.
-
-    `uuid` is the client-stable identity offline-created records are
-    matched on (the integer `id` stays autoincrement, used internally and
-    by FKs/the web app - switching PKs to UUID would ripple through every
-    FK and existing migration). `updated_at` drives last-write-wins
-    conflict resolution in the sync endpoint.
-    """
-
-    uuid = models.UUIDField(default=uuid_lib.uuid4, unique=True, editable=False, db_index=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        abstract = True
-
-
-class Category(SyncableModel):
+class Category(models.Model):
     """A user-defined expense category. Self-referential so users can nest
     subcategories to any depth (e.g. Food -> Dining Out -> Coffee)."""
 
@@ -80,7 +62,7 @@ class ColumnPreference(models.Model):
         return f"ColumnPreference({self.user.email})"
 
 
-class Expense(SyncableModel):
+class Expense(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="expenses")
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="expenses")
     amount = models.DecimalField(
@@ -115,7 +97,7 @@ class FinanceSettings(models.Model):
         return f"FinanceSettings({self.user.email})"
 
 
-class RecurringIncome(SyncableModel):
+class RecurringIncome(models.Model):
     """A repeating income schedule (salary, retainer, ...) with an exact
     anchor date - e.g. "credited on the 1st of every month". Materializes
     into real Income rows lazily (see services.sync_recurring_incomes),
@@ -143,7 +125,7 @@ class RecurringIncome(SyncableModel):
         return f"{self.label} ({self.get_interval_display()})"
 
 
-class Income(SyncableModel):
+class Income(models.Model):
     """A credit: either ad-hoc (a bonus, gift, refund, one-off payment) or
     generated from a RecurringIncome schedule."""
 
@@ -165,7 +147,7 @@ class Income(SyncableModel):
         return f"{self.amount} - {self.source or 'Income'}"
 
 
-class Budget(SyncableModel):
+class Budget(models.Model):
     """A monthly spending cap on a category. Spend against the cap is
     computed across the category and all of its subcategories."""
 
@@ -182,44 +164,3 @@ class Budget(SyncableModel):
 
     def __str__(self):
         return f"Budget({self.category.name}: {self.monthly_cap})"
-
-
-#: Keep in sync with the SyncableModel subclasses above - this is exactly
-#: the set of models the mobile sync endpoint pulls/pushes.
-SYNCABLE_MODEL_NAMES = ["category", "expense", "income", "recurringincome", "budget"]
-
-
-class SyncTombstone(models.Model):
-    """Records a delete of a SyncableModel row so the mobile app's pull
-    knows what to remove locally - a hard-deleted row would otherwise just
-    silently vanish from the sync feed with no signal. Populated by a
-    post_delete signal (see signals.py), so it catches every delete path:
-    the existing delete views, the Django admin, and cascade deletes (e.g.
-    deleting a Category cascades to its Budgets).
-
-    `db_constraint=False`: deleting a User cascades to their categories/
-    expenses/etc, and the post_delete signal writes a fresh tombstone row
-    for each mid-cascade - with a real FK, that insert can lose a race
-    against the User row itself being deleted in the same transaction and
-    fail with a FK violation. No real DB constraint sidesteps that; a
-    tombstone briefly outliving its user is harmless (there's no user left
-    to sync for, and the row ages out with the 90-day retention window,
-    purged by the `purge_tombstones` management command)."""
-
-    #: Any client that hasn't synced in longer than this has bigger problems
-    #: than a missed delete - a fresh full pull will resync it from scratch.
-    RETENTION_DAYS = 90
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sync_tombstones", db_constraint=False
-    )
-    model_name = models.CharField(max_length=20, choices=[(n, n) for n in SYNCABLE_MODEL_NAMES])
-    uuid = models.UUIDField(db_index=True)
-    deleted_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["-deleted_at"]
-        indexes = [models.Index(fields=["user", "deleted_at"])]
-
-    def __str__(self):
-        return f"Tombstone({self.model_name}:{self.uuid})"

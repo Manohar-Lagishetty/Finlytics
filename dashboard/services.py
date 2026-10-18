@@ -1,6 +1,5 @@
 """Dashboard aggregate logic - date-range resolution, category breakdown,
-and spending trend. Extracted out of views.py so both the server-rendered
-dashboard and the mobile API's summary endpoint share one implementation."""
+and spending trend. Extracted out of views.py to keep the view itself thin."""
 
 from collections import defaultdict
 from datetime import date, timedelta
@@ -125,8 +124,7 @@ def spending_trend(qs, start, end):
 
 def dashboard_summary(user, request):
     """Everything the dashboard needs for the active date range, plus the
-    always-current-month balance/budget cards. Shared by the HTML view and
-    the mobile API's summary endpoint."""
+    always-current-month balance/budget cards."""
     has_any_expenses = Expense.objects.filter(user=user).exists()
 
     start, end, range_label, range_key = resolve_range(request)

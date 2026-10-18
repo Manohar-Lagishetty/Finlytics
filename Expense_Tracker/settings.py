@@ -10,7 +10,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
-from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -50,15 +49,12 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
-    'rest_framework',
-    'rest_framework_simplejwt',
 
     # Local apps
     'accounts',
     'core',
     'dashboard',
     'expenses',
-    'Mobile_application',
 ]
 
 MIDDLEWARE = [
@@ -205,29 +201,4 @@ SOCIALACCOUNT_PROVIDERS = {
         'SCOPE': ['profile', 'email'],
         'AUTH_PARAMS': {'access_type': 'online'},
     }
-}
-# The mobile app's Google Sign-In (accounts.api_views.google_login) passes
-# this same client id as `serverClientId` so the id_token it gets back is
-# verifiable here with one shared audience - no separate Android/iOS client
-# needed for what this app does with the token (just identity, not Drive/
-# Calendar-style API access on the user's behalf).
-
-
-# REST API — used by the Flutter mobile app (local-first sync). The web app
-# still uses session-cookie auth; this is JWT-only, scoped under /api/v1/.
-
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],
-}
-
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
-    'ROTATE_REFRESH_TOKENS': False,
-    'UPDATE_LAST_LOGIN': True,
 }
