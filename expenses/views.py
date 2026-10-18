@@ -7,7 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db.models import ProtectedError, Q, Sum
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -15,6 +15,13 @@ from django.views import View
 from django.views.decorators.http import require_GET, require_POST
 
 from .exports import csv_response, pdf_summary_response, xlsx_response
+from .imports import (
+    IMPORT_HEADERS,
+    MAX_ROWS,
+    ImportFileError,
+    import_expenses,
+    template_workbook_bytes,
+)
 from .services import budget_progress_rows, sync_recurring_incomes
 from .forms import (
     BudgetForm,
@@ -37,7 +44,10 @@ from .models import (
     RecurringIncome,
 )
 from .utils import (
+    CATEGORY_COLUMNS,
     build_category_tree,
+    category_path_cells,
+    category_path_names,
     category_path_ids,
     descendant_ids,
     group_amounts_by_root,
@@ -150,8 +160,89 @@ def delete_expense(request, pk):
     return redirect(next_url if next_url and next_url.startswith("/") else "expenses:list")
 
 
-def _filtered_expenses(request):
-    filter_form = ExpenseFilterForm(request.GET or None, user=request.user)
+@login_required
+@require_POST
+def bulk_delete_expenses(request):
+    """Delete either the posted ``ids``, or — with ``select_all`` — every
+    expense matching the posted ``filters`` querystring (the same filters
+    the list page was showing)."""
+    if request.POST.get("select_all"):
+        qs, filter_form = _filtered_expenses(request, QueryDict(request.POST.get("filters", "")))
+        # An invalid filter falls back to "everything" when listing; never
+        # let that turn into deleting everything.
+        if filter_form.is_bound and not filter_form.is_valid():
+            messages.error(request, "Those filters are invalid, so nothing was deleted.")
+            return redirect("expenses:list")
+    else:
+        ids = [i for i in request.POST.getlist("ids") if i.isdigit()]
+        qs = Expense.objects.filter(user=request.user, pk__in=ids)
+    deleted, _ = qs.delete()
+    if deleted:
+        messages.success(request, f"Deleted {deleted} expense{'s' if deleted != 1 else ''}.")
+    else:
+        messages.error(request, "No expenses were selected.")
+    next_url = request.POST.get("next")
+    return redirect(next_url if next_url and next_url.startswith("/") else "expenses:list")
+
+
+class ImportExpensesView(LoginRequiredMixin, View):
+    template_name = "expenses/import.html"
+    #: Row errors shown on the page; the rest are summarised as a count.
+    max_errors_shown = 50
+
+    def get(self, request):
+        return self._render(request)
+
+    def post(self, request):
+        upload = request.FILES.get("file")
+        create_missing = bool(request.POST.get("create_missing"))
+        if upload is None:
+            return self._render(request, file_error="Choose a file to upload.", create_missing=create_missing)
+        try:
+            result = import_expenses(upload, request.user, create_missing=create_missing)
+        except ImportFileError as exc:
+            return self._render(request, file_error=str(exc), create_missing=create_missing)
+        if result.errors:
+            return self._render(request, row_errors=result.errors, filename=upload.name, create_missing=create_missing)
+
+        message = f"Imported {result.created} expense{'s' if result.created != 1 else ''}"
+        if result.categories_created:
+            message += f" and created {result.categories_created} new categor{'ies' if result.categories_created != 1 else 'y'}"
+        messages.success(request, message + ".")
+        return redirect("expenses:list")
+
+    def _render(self, request, file_error=None, row_errors=(), filename=None, create_missing=False):
+        return render(
+            request,
+            self.template_name,
+            {
+                "active_nav": "expenses",
+                "headers": IMPORT_HEADERS,
+                "max_rows": MAX_ROWS,
+                "file_error": file_error,
+                "row_errors": row_errors[: self.max_errors_shown],
+                "row_error_count": len(row_errors),
+                "hidden_error_count": max(len(row_errors) - self.max_errors_shown, 0),
+                "filename": filename,
+                "create_missing": create_missing,
+            },
+        )
+
+
+@login_required
+@require_GET
+def import_template(request):
+    response = HttpResponse(
+        template_workbook_bytes(request.user),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = 'attachment; filename="expenses-import-template.xlsx"'
+    return response
+
+
+def _filtered_expenses(request, params=None):
+    params = request.GET if params is None else params
+    filter_form = ExpenseFilterForm(params or None, user=request.user)
     qs = Expense.objects.filter(user=request.user).select_related("category")
 
     if filter_form.is_valid():
@@ -201,6 +292,7 @@ class ExpenseListView(LoginRequiredMixin, View):
                 "page_obj": page_obj,
                 "total_amount": total_amount,
                 "total_count": paginator.count,
+                "filters_query": request.GET.urlencode(),
                 "current_sort": sort,
                 "date_sort": "date" if sort == "-date" else "-date",
                 "amount_sort": "amount" if sort == "-amount" else "-amount",
@@ -211,14 +303,17 @@ class ExpenseListView(LoginRequiredMixin, View):
         )
 
 
-EXPENSE_EXPORT_HEADERS = ["Date", "Category", "Amount", "Payment Type", "Payment Source", "Location", "Note"]
+# Same column layout the importer reads, so an export can be edited and
+# re-imported as-is.
+EXPENSE_EXPORT_HEADERS = ["Date", *CATEGORY_COLUMNS, "Amount", "Payment Type", "Payment Source", "Location", "Note"]
 
 
-def _expense_export_rows(qs):
+def _expense_export_rows(qs, user):
+    categories_by_id = {c.id: c for c in Category.objects.filter(user=user)}
     return [
         [
             timezone.localtime(expense.date).strftime("%Y-%m-%d %H:%M"),
-            expense.category.name,
+            *category_path_cells(category_path_names(expense.category_id, categories_by_id)),
             str(expense.amount),
             expense.get_payment_type_display(),
             expense.payment_source,
@@ -233,14 +328,14 @@ def _expense_export_rows(qs):
 @require_GET
 def export_expenses_csv(request):
     qs, _ = _filtered_expenses(request)
-    return csv_response("expenses.csv", EXPENSE_EXPORT_HEADERS, _expense_export_rows(qs))
+    return csv_response("expenses.csv", EXPENSE_EXPORT_HEADERS, _expense_export_rows(qs, request.user))
 
 
 @login_required
 @require_GET
 def export_expenses_xlsx(request):
     qs, _ = _filtered_expenses(request)
-    return xlsx_response("expenses.xlsx", EXPENSE_EXPORT_HEADERS, _expense_export_rows(qs), sheet_title="Expenses")
+    return xlsx_response("expenses.xlsx", EXPENSE_EXPORT_HEADERS, _expense_export_rows(qs, request.user), sheet_title="Expenses")
 
 
 @login_required

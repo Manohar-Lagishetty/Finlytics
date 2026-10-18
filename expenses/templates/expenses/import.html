@@ -1,0 +1,121 @@
+{% extends "base_app.html" %}
+{% block title %}Import Expenses — Finlytics{% endblock %}
+
+{% block dashboard_content %}
+<div class="mb-6">
+  <a href="{% url 'expenses:list' %}" class="mb-2 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/></svg>
+    Expenses
+  </a>
+  <h1 class="text-2xl font-extrabold tracking-tight">Import Expenses</h1>
+  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Add many expenses at once from an Excel or CSV file.</p>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-[minmax(0,36rem)_minmax(0,1fr)]">
+  <div class="space-y-6">
+    {% if row_errors %}
+      <div class="rounded-3xl border border-rose-200 bg-rose-50/70 p-5 dark:border-rose-500/30 dark:bg-rose-500/10">
+        <h2 class="text-sm font-semibold text-rose-700 dark:text-rose-400">
+          Nothing was imported: {{ row_error_count }} problem{{ row_error_count|pluralize }} in {{ filename }}
+        </h2>
+        <p class="mt-1 text-sm text-rose-700/80 dark:text-rose-400/80">Fix these rows and upload the file again. Row numbers match your spreadsheet.</p>
+        <div class="mt-4 max-h-80 overflow-auto rounded-xl border border-rose-200 bg-white/70 dark:border-rose-500/20 dark:bg-slate-900/40">
+          <table class="w-full text-sm">
+            <tbody>
+              {% for error in row_errors %}
+                <tr class="border-b border-rose-100 last:border-0 dark:border-rose-500/10">
+                  <td class="w-20 whitespace-nowrap px-4 py-2 font-semibold text-rose-700 dark:text-rose-400">Row {{ error.row }}</td>
+                  <td class="px-4 py-2 text-slate-700 dark:text-slate-300">{{ error.message }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if hidden_error_count %}
+          <p class="mt-2 text-xs text-rose-700/80 dark:text-rose-400/80">…and {{ hidden_error_count }} more.</p>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="spotlight-card rounded-3xl border border-slate-200 bg-white/60 p-6 dark:border-slate-800 dark:bg-slate-900/40">
+      {% if file_error %}
+        <div class="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400">
+          {{ file_error }}
+        </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data" class="space-y-5"
+            x-data="{ fileName: '', submitting: false }" @submit="submitting = true">
+        {% csrf_token %}
+
+        <label class="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 px-6 py-10 text-center transition hover:border-brand-400 hover:bg-brand-50/40 dark:border-slate-700 dark:hover:border-brand-600 dark:hover:bg-brand-500/5">
+          <svg class="mb-3 h-8 w-8 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/></svg>
+          <span class="text-sm font-semibold text-slate-700 dark:text-slate-200" x-text="fileName || 'Choose an Excel or CSV file'"></span>
+          <span class="mt-1 text-xs text-slate-500 dark:text-slate-400">.xlsx or .csv · up to 5 MB · up to {{ max_rows }} rows</span>
+          <input type="file" name="file" accept=".xlsx,.csv" required class="sr-only"
+                 @change="fileName = $event.target.files[0]?.name || ''">
+        </label>
+
+        <label class="flex cursor-pointer items-start gap-3 text-sm">
+          <input type="checkbox" name="create_missing" value="1" {% if create_missing %}checked{% endif %}
+                 class="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800">
+          <span>
+            <span class="font-medium text-slate-700 dark:text-slate-200">Create categories that don't exist yet</span>
+            <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Leave this off to catch typos: rows with an unknown category will be flagged instead.</span>
+          </span>
+        </label>
+
+        <button type="submit" :disabled="submitting"
+                class="btn-press btn-gradient ripple-container flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-glow-brand disabled:opacity-60">
+          <span x-text="submitting ? 'Importing…' : 'Import expenses'"></span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <aside class="spotlight-card h-fit rounded-3xl border border-slate-200 bg-white/60 p-6 text-sm dark:border-slate-800 dark:bg-slate-900/40">
+    <h2 class="font-semibold text-slate-800 dark:text-slate-100">File format</h2>
+    <p class="mt-1 text-slate-500 dark:text-slate-400">
+      The first row must be a header row. The columns match the Excel export, so you can export, edit and re-import.
+    </p>
+    <a href="{% url 'expenses:import_template' %}"
+       class="btn-press mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 font-medium text-slate-600 transition hover:border-brand-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-brand-700">
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+      Download template
+    </a>
+
+    <dl class="mt-5 space-y-3">
+      <div>
+        <dt class="font-medium text-slate-700 dark:text-slate-200">Date <span class="text-rose-500">*</span></dt>
+        <dd class="text-slate-500 dark:text-slate-400">An Excel date, or text like 2026-10-18, 2026-10-18 14:30 or 18/10/2026.</dd>
+      </div>
+      <div>
+        <dt class="font-medium text-slate-700 dark:text-slate-200">Category <span class="text-rose-500">*</span></dt>
+        <dd class="text-slate-500 dark:text-slate-400">The top-level category, e.g. <em>Food</em>.</dd>
+      </div>
+      <div>
+        <dt class="font-medium text-slate-700 dark:text-slate-200">Subcategory 1 – 5</dt>
+        <dd class="text-slate-500 dark:text-slate-400">
+          Optional, one level per column, filled left to right: <em>Food</em> · <em>Dining Out</em> · <em>Coffee</em>.
+          Leave them blank to file the expense under the category itself.
+        </dd>
+      </div>
+      <div>
+        <dt class="font-medium text-slate-700 dark:text-slate-200">Amount <span class="text-rose-500">*</span></dt>
+        <dd class="text-slate-500 dark:text-slate-400">Greater than zero.</dd>
+      </div>
+      <div>
+        <dt class="font-medium text-slate-700 dark:text-slate-200">Payment Type</dt>
+        <dd class="text-slate-500 dark:text-slate-400">Cash, Card, UPI, Bank Transfer, Wallet or Other. Blank means Cash.</dd>
+      </div>
+      <div>
+        <dt class="font-medium text-slate-700 dark:text-slate-200">Payment Source, Location, Note</dt>
+        <dd class="text-slate-500 dark:text-slate-400">Optional.</dd>
+      </div>
+    </dl>
+    <p class="mt-5 text-xs text-slate-400 dark:text-slate-500">
+      Imports are all-or-nothing: if any row has a problem, nothing is saved and you'll see which rows to fix.
+    </p>
+  </aside>
+</div>
+{% endblock %}

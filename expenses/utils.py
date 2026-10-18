@@ -54,6 +54,35 @@ def category_path_ids(category):
     return list(reversed(path))
 
 
+#: Spreadsheet columns for a category path, used by both import and export:
+#: the root category plus up to five levels of subcategory.
+CATEGORY_COLUMNS = ["Category"] + [f"Subcategory {level}" for level in range(1, 6)]
+#: Joins levels that don't fit in CATEGORY_COLUMNS into the last column.
+CATEGORY_PATH_SEPARATOR = " > "
+
+
+def category_path_names(category_id, categories_by_id):
+    """Root-to-leaf category names for `category_id`, using a preloaded
+    {id: Category} map (no queries), e.g. ["Food", "Dining Out", "Coffee"]."""
+    names, seen, current = [], set(), category_id
+    while current is not None and current not in seen and current in categories_by_id:
+        seen.add(current)
+        names.append(categories_by_id[current].name)
+        current = categories_by_id[current].parent_id
+    return list(reversed(names))
+
+
+def category_path_cells(names):
+    """Spread a root-to-leaf name list across CATEGORY_COLUMNS, padding with
+    blanks. Paths deeper than the columns allow keep their extra levels in
+    the last column joined by CATEGORY_PATH_SEPARATOR, which import splits
+    back apart, so even very deep categories round-trip."""
+    slots = len(CATEGORY_COLUMNS)
+    if len(names) > slots:
+        names = names[: slots - 1] + [CATEGORY_PATH_SEPARATOR.join(names[slots - 1:])]
+    return list(names) + [""] * (slots - len(names))
+
+
 def root_category_id(category_id, categories_by_id):
     """Walk parent_id (a plain loaded field, no extra query) up to the
     root category id, given a {id: Category} map of a user's categories."""

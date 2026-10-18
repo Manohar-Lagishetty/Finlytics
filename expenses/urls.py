@@ -12,6 +12,9 @@ urlpatterns = [
     path("export/pdf/", views.export_expenses_pdf, name="export_pdf"),
     path("<int:pk>/edit/", views.EditExpenseView.as_view(), name="edit"),
     path("<int:pk>/delete/", views.delete_expense, name="delete"),
+    path("bulk-delete/", views.bulk_delete_expenses, name="bulk_delete"),
+    path("import/", views.ImportExpensesView.as_view(), name="import"),
+    path("import/template/", views.import_template, name="import_template"),
     path("columns/", views.update_column_preference, name="update_columns"),
 
     path("income/", views.IncomeListView.as_view(), name="income"),
